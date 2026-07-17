@@ -243,6 +243,7 @@ header .period {
 /* dept detail */
 .dept-detail { display: none; }
 .dept-detail.open { display: block; }
+.dept-row.active { border-top: 2px solid #5b9bd5; border-bottom: 2px solid #5b9bd5; }
 .dept-member {
   display: flex; justify-content: space-between; align-items: center;
   padding: 7px 10px 7px 28px;
@@ -1009,6 +1010,9 @@ function toggleDept(i) {
   });
   detail.classList.toggle('open', !isOpen);
   chevron.classList.toggle('open', !isOpen);
+  // Highlight dept-row when open
+  const deptRow = detail.previousElementSibling;
+  if (deptRow) deptRow.classList.toggle('active', !isOpen);
 }
 
 function buildStatusBar(payments, joinIdx) {
