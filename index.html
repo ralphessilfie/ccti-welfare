@@ -1006,6 +1006,9 @@ function toggleDept(i) {
       const idx = el.id.replace('dept-detail-', '');
       const chev = document.getElementById(`chev-${idx}`);
       if (chev) chev.classList.remove('open');
+      // Remove active border from closed dept-row
+      const prevRow = el.previousElementSibling;
+      if (prevRow) prevRow.classList.remove('active');
     }
   });
   detail.classList.toggle('open', !isOpen);
