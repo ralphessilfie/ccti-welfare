@@ -220,14 +220,6 @@ header .period {
 .dept-hdr-staff { flex: 0 0 15%; font-size: 10px; color: #7aabcf; text-transform: uppercase; letter-spacing: .8px; text-align: center; }
 .dept-hdr-comp  { flex: 1; font-size: 10px; color: #7aabcf; text-transform: uppercase; letter-spacing: .8px; }
 
-.dept-wrap { }
-.dept-wrap.open .dept-row {
-  border-top: 2px solid #5b9bd5;
-  border-bottom: 2px solid #5b9bd5;
-}
-.dept-wrap.open .dept-member:last-child {
-  border-bottom: 2px solid #5b9bd5;
-}
 .dept-row {
   display: flex; align-items: center;
   padding: 9px 8px;
@@ -258,7 +250,7 @@ header .period {
   border-bottom: 1px solid #1a3058;
   background: #0f2044;
 }
-.dept-member:last-child { border-bottom: none; }
+.dept-member:last-child { border-bottom: 2px solid #1e3d6b; }
 .dept-member:last-child { border-bottom: 2px solid #2e75b6; }
 .dm-name  { font-size: 12px; color: #c8dcf5; }
 .dm-status { font-size: 11px; font-weight: 700; padding: 2px 9px; border-radius: 12px; white-space: nowrap; margin-left: 8px; }
@@ -882,7 +874,7 @@ function renderDash() {
           <span class="dm-status ${m.statusCls}">${m.statusLabel}</span>
         </div>`
       ).join('');
-      return `<div class="dept-wrap" id="dept-wrap-${i}"><div class="dept-row" onclick="toggleDept(${i})">
+      return `<div class="dept-row" onclick="toggleDept(${i})">
           <div class="dept-row-name"><span class="dept-chevron" id="chev-${i}">▶</span>${d.name}</div>
           <div class="dept-row-staff">${d.count}</div>
           <div class="dept-row-comp">
@@ -890,7 +882,7 @@ function renderDash() {
             <div class="pct-bar-wrap"><div class="pct-bar ${cls}" style="width:${d.pct}%"></div></div>
           </div>
         </div>
-        <div class="dept-detail" id="dept-detail-${i}">${membersHTML}</div></div>`;
+        <div class="dept-detail" id="dept-detail-${i}">${membersHTML}</div>`;
     }).join('')}
   </div>
 
@@ -1006,22 +998,18 @@ function clearSearch() {
 function toggleDept(i) {
   const detail  = document.getElementById(`dept-detail-${i}`);
   const chevron = document.getElementById(`chev-${i}`);
-  const wrap    = document.getElementById(`dept-wrap-${i}`);
   const isOpen  = detail.classList.contains('open');
-  // Close all other open departments
-  document.querySelectorAll('.dept-wrap.open').forEach(el => {
-    if (el.id !== `dept-wrap-${i}`) {
+  // Close all other open departments first
+  document.querySelectorAll('.dept-detail.open').forEach(el => {
+    if (el.id !== `dept-detail-${i}`) {
       el.classList.remove('open');
-      const idx = el.id.replace('dept-wrap-', '');
-      const d = document.getElementById(`dept-detail-${idx}`);
-      if (d) d.classList.remove('open');
-      const c = document.getElementById(`chev-${idx}`);
-      if (c) c.classList.remove('open');
+      const idx = el.id.replace('dept-detail-', '');
+      const chev = document.getElementById(`chev-${idx}`);
+      if (chev) chev.classList.remove('open');
     }
   });
   detail.classList.toggle('open', !isOpen);
   chevron.classList.toggle('open', !isOpen);
-  if (wrap) wrap.classList.toggle('open', !isOpen);
 }
 
 function buildStatusBar(payments, joinIdx) {
