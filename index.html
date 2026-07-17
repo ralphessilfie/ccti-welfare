@@ -874,7 +874,7 @@ function renderDash() {
           <span class="dm-status ${m.statusCls}">${m.statusLabel}</span>
         </div>`
       ).join('');
-      return `<div class="dept-row" onclick="toggleDept(${i})">
+      return `<div class="dept-row" id="dept-row-${i}" onclick="toggleDept(${i})">
           <div class="dept-row-name"><span class="dept-chevron" id="chev-${i}">▶</span>${d.name}</div>
           <div class="dept-row-staff">${d.count}</div>
           <div class="dept-row-comp">
@@ -998,24 +998,22 @@ function clearSearch() {
 function toggleDept(i) {
   const detail  = document.getElementById(`dept-detail-${i}`);
   const chevron = document.getElementById(`chev-${i}`);
+  const row     = document.getElementById(`dept-row-${i}`);
   const isOpen  = detail.classList.contains('open');
   // Close all other open departments first
   document.querySelectorAll('.dept-detail.open').forEach(el => {
     if (el.id !== `dept-detail-${i}`) {
-      el.classList.remove('open');
       const idx = el.id.replace('dept-detail-', '');
+      el.classList.remove('open');
       const chev = document.getElementById(`chev-${idx}`);
       if (chev) chev.classList.remove('open');
-      // Remove active border from closed dept-row
-      const prevRow = el.previousElementSibling;
-      if (prevRow) prevRow.classList.remove('active');
+      const r = document.getElementById(`dept-row-${idx}`);
+      if (r) r.classList.remove('active');
     }
   });
   detail.classList.toggle('open', !isOpen);
   chevron.classList.toggle('open', !isOpen);
-  // Highlight dept-row when open
-  const deptRow = detail.previousElementSibling;
-  if (deptRow) deptRow.classList.toggle('active', !isOpen);
+  if (row) row.classList.toggle('active', !isOpen);
 }
 
 function buildStatusBar(payments, joinIdx) {
