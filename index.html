@@ -1023,7 +1023,7 @@ function buildStatusBar(payments, joinIdx) {
 
   const currentMonth = MONTHS[CURRENT_IDX].replace(/\'(\d{2})$/, (_, y) => ' 20' + y);
   if (behind === 0 && paidAhead > 0) {
-    return '<div class="status-bar ahead"><strong>' + paidAhead + ' month' + (paidAhead>1?'s':'') + ' paid in advance beyond ' + currentMonth + ': GH&#x20B5;' + aheadTotal.toLocaleString() + '</strong></div>';
+    return '<div class="status-bar ahead"><strong>' + paidAhead + ' month' + (paidAhead>1?'s':'') + ' paid in advance after ' + currentMonth + ': GH&#x20B5;' + aheadTotal.toLocaleString() + '</strong></div>';
   } else if (behind === 0) {
     return '<div class="status-bar ok"><strong>Paid up to date: ' + currentMonth + '</strong></div>';
   } else {
