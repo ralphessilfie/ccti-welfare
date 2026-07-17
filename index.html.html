@@ -1,0 +1,1467 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CCTI Welfare – Glico Contributions</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Segoe UI', Arial, sans-serif;
+  background: #0f2044;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* ── HEADER ── */
+header {
+  width: 100%;
+  background: #0f2044;
+  padding: 24px 20px 0;
+  text-align: center;
+}
+header .school {
+  color: #7eb3e8;
+  font-size: 11px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-bottom: 5px;
+}
+header h1 {
+  color: #fff;
+  font-size: 19px;
+  font-weight: 700;
+  line-height: 1.3;
+  margin-bottom: 3px;
+}
+header .period {
+  color: #a0bedd;
+  font-size: 12px;
+  margin-bottom: 18px;
+}
+
+/* ── TABS ── */
+.tabs {
+  display: flex;
+  width: 100%;
+  max-width: 480px;
+  border-bottom: 2px solid #1e3d6b;
+  margin: 0 auto;
+}
+.tab {
+  flex: 1;
+  padding: 11px 8px;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: #4a6f9c;
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+  margin-bottom: -2px;
+  transition: color .2s, border-color .2s;
+  letter-spacing: .3px;
+}
+.tab.active { color: #5b9bd5; border-bottom-color: #5b9bd5; }
+.tab-icon { font-size: 15px; margin-right: 5px; }
+
+/* ── PANELS ── */
+.panel { display: none; width: 100%; max-width: 480px; }
+.panel.active { display: block; }
+
+/* ════════════════════════════════════════════
+   STAFF LOOKUP PANEL
+════════════════════════════════════════════ */
+.search-wrap { padding: 18px 16px 0; }
+.search-label {
+  color: #a0bedd; font-size: 11px; letter-spacing: 1px;
+  text-transform: uppercase; margin-bottom: 7px; display: block;
+}
+.search-row { display: flex; gap: 8px; }
+#searchInput {
+  flex: 1; padding: 13px 16px; font-size: 16px;
+  border: 2px solid #2e5fa3; border-radius: 10px;
+  background: #162d55; color: #fff; outline: none; transition: border-color .2s;
+}
+#searchInput::placeholder { color: #4a6f9c; }
+#searchInput:focus { border-color: #5b9bd5; }
+#clearBtn {
+  padding: 13px 15px; background: #2e5fa3; border: none;
+  border-radius: 10px; color: #fff; font-size: 17px;
+  cursor: pointer; display: none; line-height: 1;
+}
+#clearBtn.visible { display: block; }
+#suggestions {
+  background: #162d55; border: 1px solid #2e5fa3;
+  border-radius: 10px; margin-top: 6px; overflow: hidden; display: none;
+}
+#suggestions.visible { display: block; }
+.suggestion-item {
+  padding: 12px 16px; color: #c8dcf5; font-size: 15px;
+  cursor: pointer; border-bottom: 1px solid #1e3d6b;
+  display: flex; justify-content: space-between; align-items: center;
+}
+.suggestion-item:last-child { border-bottom: none; }
+.suggestion-item:hover, .suggestion-item.active { background: #1e3d6b; color: #fff; }
+.suggestion-dept {
+  font-size: 11px; color: #6a94c4; background: #0f2044;
+  padding: 2px 8px; border-radius: 10px;
+}
+#result { padding: 14px 16px 28px; display: none; }
+#result.visible { display: block; }
+.card { background: #fff; border-radius: 14px; overflow: hidden; box-shadow: 0 8px 32px rgba(0,0,0,.35); }
+.card-header {
+  background: linear-gradient(135deg, #1a4b8c, #2e75b6);
+  padding: 16px 20px 14px;
+}
+.card-number { font-size: 11px; color: #90bce0; letter-spacing: 1px; margin-bottom: 3px; }
+.card-name { color: #fff; font-size: 19px; font-weight: 700; line-height: 1.2; margin-bottom: 4px; }
+.card-dept {
+  display: inline-block; background: rgba(255,255,255,.18);
+  color: #d0e8ff; font-size: 11px; padding: 3px 10px;
+  border-radius: 20px; letter-spacing: .5px;
+}
+.months-grid { display: grid; grid-template-columns: 1fr 1fr; }
+.month-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 14px; border-bottom: 1px solid #f0f0f0;
+}
+.months-grid > .month-row:nth-child(odd) { border-right: 1px solid #f0f0f0; }
+.month-row.paid    { background: #f0faf2; }
+.month-row.unpaid  { background: #fafafa; }
+.month-row.arrears { background: #fff8f0; }
+.month-name { font-size: 13px; font-weight: 600; color: #334; }
+.month-row.unpaid .month-name { color: #aaa; font-weight: 400; }
+.month-badge { font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 20px; }
+.paid    .month-badge { background: #d4edda; color: #276c3a; }
+.unpaid  .month-badge { background: #ebebeb; color: #bbb; }
+.arrears .month-badge { background: #ffe5cc; color: #b35a00; }
+.month-row.pre-member { background: #f5f5f5; }
+.month-row.pre-member .month-name { color: #ccc; font-weight: 400; font-style: italic; }
+.pre-member .month-badge { background: #eeeeee; color: #ccc; font-size: 10px; font-style: italic; font-weight: 400; }
+.month-row.partial { background: #fff8ec; }
+.month-row.partial .month-name { color: #8a5700; font-weight: 600; }
+.partial .month-badge { background: #ffe5b0; color: #8a5700; }
+.total-bar {
+  background: #fffbe6; border-top: 2px solid #f0d060;
+  padding: 14px 20px; display: flex; justify-content: space-between; align-items: center;
+}
+.total-label { font-size: 12px; font-weight: 600; color: #7a5800; text-transform: uppercase; letter-spacing: .5px; }
+.total-amount { font-size: 21px; font-weight: 800; color: #5a4000; }
+.month-row.editable { cursor: pointer; }
+.month-row.editable:hover { filter: brightness(0.95); }
+.month-input { width: 60px; padding: 2px 6px; border-radius: 6px; border: 2px solid #2e75b6; background: #fff; font-size: 13px; font-weight: 700; color: #276c3a; text-align: center; outline: none; }
+.month-input:focus { border-color: #1a4b8c; }
+.edit-hint { font-size: 10px; color: #888; text-align: center; padding: 5px; background: #f5f8ff; border-top: 1px solid #dde; }
+.status-bar { padding: 11px 20px; font-size: 13px; text-align: center; border-top: 2px solid #eee; }
+.status-bar.ok   { background: #f0faf2; color: #276c3a; border-top-color: #c3e6cb; }
+.status-bar.ahead{ background: #e8f5e9; color: #155724; border-top-color: #28a745; }
+.status-bar.owe  { background: #fff3cd; color: #856404; border-top-color: #ffc107; }
+.save-bar { padding: 12px 20px; background: #e8f5e9; border-top: 2px solid #28a745; display: none; }
+.save-bar.visible { display: block; }
+.save-btn { width: 100%; padding: 12px; background: #28a745; border: none; border-radius: 8px; color: #fff; font-size: 14px; font-weight: 700; cursor: pointer; }
+.save-btn:hover { background: #218838; }
+.save-note { font-size: 11px; color: #276c3a; text-align: center; margin-top: 6px; }
+#emptyState { display: none; color: #4a6f9c; text-align: center; padding: 28px 20px; font-size: 14px; }
+#emptyState.visible { display: block; }
+#prompt { color: #3a5a8a; text-align: center; padding: 36px 20px; font-size: 14px; line-height: 1.7; }
+
+/* ════════════════════════════════════════════
+   DASHBOARD PANEL
+════════════════════════════════════════════ */
+.dash { padding: 16px 16px 32px; }
+
+/* summary cards */
+.summary-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px;
+}
+.summary-card {
+  background: #162d55; border-radius: 12px; padding: 14px 14px 12px;
+  border-left: 4px solid #2e75b6;
+}
+.summary-card.green  { border-left-color: #28a745; }
+.summary-card.red    { border-left-color: #dc3545; }
+.summary-card.yellow { border-left-color: #ffc107; }
+.summary-card.blue   { border-left-color: #2e75b6; }
+.s-label { font-size: 10px; color: #7aabcf; text-transform: uppercase; letter-spacing: .8px; margin-bottom: 5px; }
+.s-value { font-size: 20px; font-weight: 800; color: #fff; line-height: 1; }
+.s-sub   { font-size: 10px; color: #5a8abf; margin-top: 3px; }
+
+/* section headings */
+.section-head {
+  color: #7eb3e8; font-size: 10px; letter-spacing: 1.5px;
+  text-transform: uppercase; margin: 20px 0 10px;
+  display: flex; align-items: center; gap: 8px;
+}
+.section-head::after {
+  content: ''; flex: 1; height: 1px; background: #1e3d6b;
+}
+
+/* monthly bar chart */
+.bar-chart { display: flex; flex-direction: column; gap: 5px; }
+.bar-row { display: flex; align-items: center; gap: 8px; }
+.bar-month { width: 46px; font-size: 11px; color: #7aabcf; text-align: right; flex-shrink: 0; }
+.bar-track { flex: 1; background: #1e3d6b; border-radius: 4px; height: 18px; overflow: hidden; }
+.bar-fill  { height: 100%; background: linear-gradient(90deg, #2e75b6, #5b9bd5); border-radius: 4px; transition: width .6s ease; display: flex; align-items: center; }
+.bar-val   { font-size: 10px; color: #fff; padding-left: 6px; white-space: nowrap; font-weight: 600; }
+
+/* department list */
+.dept-list { width: 100%; }
+.dept-hdr {
+  display: flex; align-items: center;
+  padding: 6px 8px;
+  border-bottom: 1px solid #1e3d6b;
+}
+.dept-hdr-name { flex: 0 0 50%; font-size: 10px; color: #7aabcf; text-transform: uppercase; letter-spacing: .8px; }
+.dept-hdr-staff { flex: 0 0 15%; font-size: 10px; color: #7aabcf; text-transform: uppercase; letter-spacing: .8px; text-align: center; }
+.dept-hdr-comp  { flex: 1; font-size: 10px; color: #7aabcf; text-transform: uppercase; letter-spacing: .8px; }
+
+.dept-row {
+  display: flex; align-items: center;
+  padding: 9px 8px;
+  border-top: 2px solid #1e3d6b;
+  border-bottom: 1px solid #162d55;
+  cursor: pointer; transition: background .15s;
+}
+.dept-row:hover { background: #1e3d6b; }
+.dept-row-name  { flex: 0 0 50%; font-size: 12px; color: #c8dcf5; display: flex; align-items: center; gap: 6px; }
+.dept-row-staff { flex: 0 0 15%; font-size: 12px; color: #7aabcf; text-align: center; }
+.dept-row-comp  { flex: 1; }
+.dept-chevron { font-size: 10px; color: #4a6f9c; transition: transform .25s; flex-shrink: 0; }
+.dept-chevron.open { transform: rotate(90deg); }
+.dept-pct { font-weight: 700; }
+.pct-bar-wrap { height: 5px; background: #1e3d6b; border-radius: 3px; margin-top: 3px; overflow: hidden; }
+.pct-bar { height: 100%; border-radius: 3px; }
+.pct-high   { background: #28a745; }
+.pct-mid    { background: #ffc107; }
+.pct-low    { background: #dc3545; }
+
+/* dept detail */
+.dept-detail { display: none; }
+.dept-detail.open { display: block; }
+.dept-member {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 7px 10px 7px 28px;
+  border-bottom: 1px solid #1a3058;
+  background: #0f2044;
+}
+.dept-member:last-child { border-bottom: 2px solid #1e3d6b; }
+.dept-member:last-child { border-bottom: 2px solid #2e75b6; }
+.dm-name  { font-size: 12px; color: #c8dcf5; }
+.dm-status { font-size: 11px; font-weight: 700; padding: 2px 9px; border-radius: 12px; white-space: nowrap; margin-left: 8px; }
+.dm-ok      { background: #1a3d1a; color: #5fdb80; }
+.dm-ahead   { background: #0d2d1a; color: #2ecc71; }
+.dm-warn    { background: #3a2f00; color: #ffc107; }
+.dm-behind  { background: #3a1a1a; color: #ff8080; }
+.dm-partial { background: #2a1f00; color: #ffaa44; }
+
+/* defaulters */
+.defaulter-item {
+  background: #162d55; border-radius: 10px; padding: 12px 14px;
+  margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;
+}
+.def-name  { font-size: 13px; font-weight: 600; color: #c8dcf5; }
+.def-dept  { font-size: 11px; color: #5a8abf; margin-top: 2px; }
+.def-badge {
+  font-size: 11px; font-weight: 700; padding: 4px 10px;
+  border-radius: 20px; background: #3a1a1a; color: #ff8080; white-space: nowrap; margin-left: 10px;
+}
+.def-badge.warn { background: #3a2f00; color: #ffc107; }
+
+/* reconciliation */
+.recon-table { width: 100%; }
+.recon-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 10px 14px; background: #162d55; border-radius: 8px; margin-bottom: 6px;
+}
+.recon-label { font-size: 12px; color: #a0bedd; }
+.recon-val   { font-size: 13px; font-weight: 700; }
+.recon-val.pos { color: #5fdb80; }
+.recon-val.neg { color: #ff8080; }
+.recon-val.bal { color: #ffd966; font-size: 16px; }
+.recon-divider { border: none; border-top: 1px solid #1e3d6b; margin: 8px 0; }
+
+footer { color: #1e3d6b; font-size: 11px; text-align: center; padding: 16px; margin-top: auto; }
+</style>
+<style>
+/* ── Auth overlay ── */
+#authOverlay {
+  position: fixed; inset: 0; background: #0f2044;
+  display: flex; align-items: center; justify-content: center;
+  z-index: 1000; padding: 20px;
+}
+.auth-card {
+  background: #162d55; border-radius: 14px; padding: 32px 28px;
+  width: 100%; max-width: 360px; box-shadow: 0 8px 32px rgba(0,0,0,.5);
+}
+.auth-title { color: #fff; font-size: 18px; font-weight: 700; margin-bottom: 4px; }
+.auth-sub { color: #7eb3e8; font-size: 12px; margin-bottom: 24px; }
+.auth-field { margin-bottom: 14px; }
+.auth-field label { display: block; color: #7eb3e8; font-size: 11px; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 6px; }
+.auth-field input {
+  width: 100%; padding: 12px 14px; border-radius: 8px;
+  border: 2px solid #2e5fa3; background: #0f2044;
+  color: #fff; font-size: 14px; outline: none; box-sizing: border-box;
+}
+.auth-field input:focus { border-color: #5b9bd5; }
+.auth-btn {
+  width: 100%; padding: 13px; background: linear-gradient(135deg,#1a4b8c,#2e75b6);
+  border: none; border-radius: 8px; color: #fff; font-size: 15px;
+  font-weight: 700; cursor: pointer; margin-top: 8px;
+}
+.auth-btn:hover { opacity: .9; }
+.auth-err { color: #ff8080; font-size: 12px; margin-top: 8px; text-align: center; display: none; }
+/* ── Admin bar ── */
+#adminBar {
+  display: none; background: #1a3d1a; padding: 8px 16px;
+  display: none; align-items: center; justify-content: space-between;
+  font-size: 12px; color: #5fdb80; width: 100%; box-sizing: border-box;
+}
+#adminBar.visible { display: flex; }
+.logout-btn {
+  background: none; border: 1px solid #5fdb80; color: #5fdb80;
+  border-radius: 6px; padding: 3px 10px; font-size: 11px; cursor: pointer;
+}
+/* ── Loading ── */
+#loadingScreen {
+  position: fixed; inset: 0; background: #0f2044;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center; z-index: 500;
+}
+.spinner { width: 40px; height: 40px; border: 4px solid #1e3d6b; border-top-color: #5b9bd5; border-radius: 50%; animation: spin .8s linear infinite; margin-bottom: 16px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.load-text { color: #a0bedd; font-size: 14px; }
+/* ── Note input ── */
+.note-input { width: 100%; padding: 9px 12px; margin-bottom: 8px; border-radius: 8px; border: 1px solid #a5d6a7; background: #f1f8f1; font-size: 13px; color: #1b5e20; outline: none; box-sizing: border-box; }
+.note-input::placeholder { color: #81c784; }
+.status-bar { padding: 11px 20px; font-size: 13px; text-align: center; border-top: 2px solid #eee; }
+.status-bar.ok   { background: #f0faf2; color: #276c3a; border-top-color: #c3e6cb; }
+.status-bar.ahead{ background: #e8f5e9; color: #155724; border-top-color: #28a745; }
+.status-bar.owe  { background: #fff3cd; color: #856404; border-top-color: #ffc107; }
+.save-bar { padding: 12px 20px; background: #e8f5e9; border-top: 2px solid #28a745; display: none; }
+.save-bar.visible { display: block; }
+.save-btn { width: 100%; padding: 12px; background: #28a745; border: none; border-radius: 8px; color: #fff; font-size: 14px; font-weight: 700; cursor: pointer; }
+.save-btn:hover { background: #218838; }
+.save-note { font-size: 11px; color: #276c3a; text-align: center; margin-top: 6px; }
+.month-row.editable { cursor: pointer; }
+.month-row.editable:hover { filter: brightness(.95); }
+.month-input { width: 60px; padding: 2px 6px; border-radius: 6px; border: 2px solid #2e75b6; background: #fff; font-size: 13px; font-weight: 700; color: #276c3a; text-align: center; outline: none; }
+.edit-hint { font-size: 10px; color: #888; text-align: center; padding: 5px; background: #f5f8ff; border-top: 1px solid #dde; }
+</style>
+</head>
+<body>
+
+<!-- Auth overlay (admin login) -->
+<div id="authOverlay" style="display:none">
+  <div class="auth-card">
+    <div class="auth-title">Admin Login</div>
+    <div class="auth-sub">CCTI Welfare Association</div>
+    <div class="auth-field">
+      <label>Email</label>
+      <input type="email" id="loginEmail" placeholder="your@email.com" autocomplete="email">
+    </div>
+    <div class="auth-field">
+      <label>Password</label>
+      <input type="password" id="loginPassword" placeholder="Password" autocomplete="current-password">
+    </div>
+    <button class="auth-btn" onclick="doLogin()">Login</button>
+    <button class="auth-btn" onclick="closeLogin()" style="margin-top:8px;background:#1e3d6b">Cancel</button>
+    <div class="auth-err" id="loginErr"></div>
+  </div>
+</div>
+
+<!-- Loading screen -->
+<div id="loadingScreen">
+  <div class="spinner"></div>
+  <div class="load-text">Loading welfare data...</div>
+</div>
+
+<!-- Admin bar -->
+<div id="adminBar">
+  <span>&#128275; Admin Mode — <span id="adminEmail"></span></span>
+  <div style="display:flex;gap:8px">
+    <button class="logout-btn" onclick="exportExcel()" style="border-color:#5b9bd5;color:#5b9bd5">&#11015; Excel</button>
+    <button class="logout-btn" onclick="doLogout()">Logout</button>
+  </div>
+</div>
+
+<header>
+  <div class="school">Cape Coast Technical Institute</div>
+  <h1>Staff Welfare Association<br>Glico/Welfare Contributions</h1>
+  <div class="period" id="periodLabel">Loading...</div>
+  <div id="adminLoginBtn" onclick="showLogin()" style="margin-top:8px;cursor:pointer;font-size:11px;color:#3a5a8a;letter-spacing:1px;display:none">&#128274; ADMIN LOGIN</div>
+</header>
+
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('staff')"><span class="tab-icon">&#128269;</span>My Record</div>
+  <div class="tab" onclick="switchTab('dash')"><span class="tab-icon">&#128202;</span>Dashboard</div>
+  <div class="tab" id="adminPanelTab" onclick="switchTab('admin')" style="display:none"><span class="tab-icon">&#9881;</span>Admin</div>
+</div>
+<div class="panel active" id="panel-staff">
+  <div class="search-wrap">
+    <label class="search-label" for="searchInput">Search your name</label>
+    <div class="search-row">
+      <input type="text" id="searchInput" placeholder="e.g. Elizabeth Mensah" autocomplete="off" autocorrect="off" spellcheck="false">
+      <button id="clearBtn" onclick="clearSearch()">&#x2715;</button>
+    </div>
+    <div id="suggestions"></div>
+  </div>
+  <div id="prompt" style="color:#3a5a8a;text-align:center;padding:36px 20px;font-size:14px;line-height:1.7">Type your name above<br>to view your contribution record.</div>
+  <div id="emptyState">No staff member found.<br>Try a different spelling.</div>
+  <div id="result"></div>
+</div>
+<div class="panel" id="panel-dash">
+  <div class="dash" id="dashContent"></div>
+</div>
+<div class="panel" id="panel-admin">
+  <div class="dash" style="padding:16px">
+
+    <!-- Add Staff -->
+    <div class="section-head">Add New Staff Member</div>
+    <div style="background:#162d55;border-radius:12px;padding:16px;margin-bottom:16px">
+      <div class="auth-field" style="margin-bottom:10px">
+        <label style="color:#7eb3e8;font-size:11px;letter-spacing:1px;text-transform:uppercase;display:block;margin-bottom:6px">Full Name</label>
+        <input type="text" id="newStaffName" placeholder="e.g. John Mensah" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid #2e5fa3;background:#0f2044;color:#fff;font-size:14px;outline:none;box-sizing:border-box">
+      </div>
+      <div class="auth-field" style="margin-bottom:10px">
+        <label style="color:#7eb3e8;font-size:11px;letter-spacing:1px;text-transform:uppercase;display:block;margin-bottom:6px">Department</label>
+        <input type="text" id="newStaffDept" placeholder="e.g. Kitchen" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid #2e5fa3;background:#0f2044;color:#fff;font-size:14px;outline:none;box-sizing:border-box">
+      </div>
+      <div class="auth-field" style="margin-bottom:14px">
+        <label style="color:#7eb3e8;font-size:11px;letter-spacing:1px;text-transform:uppercase;display:block;margin-bottom:6px">Joining Month</label>
+        <select id="newStaffJoined" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid #2e5fa3;background:#0f2044;color:#fff;font-size:14px;outline:none"></select>
+      </div>
+      <button onclick="addStaff()" style="width:100%;padding:12px;background:#28a745;border:none;border-radius:8px;color:#fff;font-size:14px;font-weight:700;cursor:pointer">Add Staff Member</button>
+      <div id="addStaffMsg" style="margin-top:8px;font-size:12px;text-align:center;display:none"></div>
+    </div>
+
+    <!-- Add Month -->
+    <div class="section-head">Add New Month</div>
+    <div style="background:#162d55;border-radius:12px;padding:16px;margin-bottom:16px">
+      <div style="color:#a0bedd;font-size:12px;margin-bottom:12px">Current months: <span id="currentMonthCount" style="color:#5fdb80;font-weight:700"></span></div>
+      <div class="auth-field" style="margin-bottom:10px">
+        <label style="color:#7eb3e8;font-size:11px;letter-spacing:1px;text-transform:uppercase;display:block;margin-bottom:6px">Month</label>
+        <select id="newMonthName" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid #2e5fa3;background:#0f2044;color:#fff;font-size:14px;outline:none">
+          <option>Jan</option><option>Feb</option><option>Mar</option><option>Apr</option>
+          <option>May</option><option>Jun</option><option>Jul</option><option>Aug</option>
+          <option>Sep</option><option>Oct</option><option>Nov</option><option>Dec</option>
+        </select>
+      </div>
+      <div class="auth-field" style="margin-bottom:14px">
+        <label style="color:#7eb3e8;font-size:11px;letter-spacing:1px;text-transform:uppercase;display:block;margin-bottom:6px">Year (last 2 digits)</label>
+        <input type="text" id="newMonthYear" placeholder="e.g. 27" maxlength="2" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid #2e5fa3;background:#0f2044;color:#fff;font-size:14px;outline:none;box-sizing:border-box">
+      </div>
+      <button onclick="addMonth()" style="width:100%;padding:12px;background:#2e75b6;border:none;border-radius:8px;color:#fff;font-size:14px;font-weight:700;cursor:pointer">Add Month</button>
+      <div id="addMonthMsg" style="margin-top:8px;font-size:12px;text-align:center;display:none"></div>
+    </div>
+
+    <!-- Glico Payments -->
+    <div class="section-head">Record Glico Payment</div>
+    <div style="background:#162d55;border-radius:12px;padding:16px;margin-bottom:16px">
+      <div style="color:#a0bedd;font-size:12px;margin-bottom:12px">Record a premium payment made to Glico Insurance.</div>
+      <div style="margin-bottom:10px">
+        <label style="display:block;color:#7eb3e8;font-size:11px;letter-spacing:1px;text-transform:uppercase;margin-bottom:6px">Description</label>
+        <input type="text" id="glicoLabel" placeholder="e.g. Glico premium paid (Jan 2027)" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid #2e5fa3;background:#0f2044;color:#fff;font-size:13px;outline:none;box-sizing:border-box">
+      </div>
+      <div style="margin-bottom:10px">
+        <label style="display:block;color:#7eb3e8;font-size:11px;letter-spacing:1px;text-transform:uppercase;margin-bottom:6px">Amount (GH&#x20B5;)</label>
+        <input type="number" id="glicoAmount" placeholder="e.g. 7038" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid #2e5fa3;background:#0f2044;color:#fff;font-size:13px;outline:none;box-sizing:border-box">
+      </div>
+      <div style="margin-bottom:14px">
+        <label style="display:block;color:#7eb3e8;font-size:11px;letter-spacing:1px;text-transform:uppercase;margin-bottom:6px">Date Paid</label>
+        <input type="date" id="glicoDate" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid #2e5fa3;background:#0f2044;color:#fff;font-size:13px;outline:none;box-sizing:border-box">
+      </div>
+      <button onclick="addGlicoPayment()" style="width:100%;padding:12px;background:#1a4b8c;border:none;border-radius:8px;color:#fff;font-size:14px;font-weight:700;cursor:pointer">Record Glico Payment</button>
+      <div id="glicoMsg" style="margin-top:8px;font-size:12px;text-align:center;display:none"></div>
+      <div id="glicoList" style="margin-top:14px"></div>
+    </div>
+
+    <!-- Manage Staff -->
+    <div class="section-head">Deactivate Staff</div>
+    <div style="background:#162d55;border-radius:12px;padding:16px">
+      <div style="color:#a0bedd;font-size:12px;margin-bottom:12px">Mark a staff member as inactive (they leave the association). Their payments remain in totals.</div>
+      <div class="auth-field" style="margin-bottom:14px">
+        <label style="color:#7eb3e8;font-size:11px;letter-spacing:1px;text-transform:uppercase;display:block;margin-bottom:6px">Staff Member</label>
+        <select id="deactivateStaff" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid #2e5fa3;background:#0f2044;color:#fff;font-size:14px;outline:none"></select>
+      </div>
+      <button onclick="deactivateStaff()" style="width:100%;padding:12px;background:#dc3545;border:none;border-radius:8px;color:#fff;font-size:14px;font-weight:700;cursor:pointer">Deactivate Staff Member</button>
+      <div id="deactivateMsg" style="margin-top:8px;font-size:12px;text-align:center;display:none"></div>
+    </div>
+
+  </div>
+</div>
+
+<footer>CCTI Welfare Association &middot; 2025/2026</footer>
+
+<script>
+// ── Supabase setup ────────────────────────────────────────────
+const SUPABASE_URL  = 'https://vwcpmdfqncfqveulmmae.supabase.co';
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ3Y3BtZGZxbmNmcXZldWxtbWFlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQxODkwMDEsImV4cCI6MjA5OTc2NTAwMX0.gfObhQf97xE9eFnFHPtB0k2_6jMA_xgMMWe02lq-Uos';
+const { createClient } = supabase;
+const db = createClient(SUPABASE_URL, SUPABASE_ANON);
+
+// ── App state ─────────────────────────────────────────────────
+let MONTHS = [], STAFF = [], GLICO_PAID = [], MONTHLY_TOTALS = [];
+let TOTAL_COLLECTED = 0, CURRENT_IDX = 0, DUE_MONTHS = 0;
+let INACTIVE_TOTAL = 0; // payments from inactive staff (always included in totals)
+let PERIOD_ID = 1;
+let IS_ADMIN = false;
+let _lastEdit = null;
+const pendingEdits = {};
+
+// ── Auth ──────────────────────────────────────────────────────
+function showLogin() {
+  document.getElementById('authOverlay').style.display = 'flex';
+  setTimeout(() => document.getElementById('loginEmail').focus(), 100);
+}
+function closeLogin() {
+  document.getElementById('authOverlay').style.display = 'none';
+  document.getElementById('loginErr').style.display = 'none';
+}
+async function doLogin() {
+  const email = document.getElementById('loginEmail').value.trim();
+  const pass  = document.getElementById('loginPassword').value;
+  const err   = document.getElementById('loginErr');
+  err.style.display = 'none';
+  const { data, error } = await db.auth.signInWithPassword({ email, password: pass });
+  if (error) {
+    err.textContent = error.message;
+    err.style.display = 'block';
+    return;
+  }
+  closeLogin();
+  setAdminMode(true, email);
+  // Refresh current card if open
+  const idx = STAFF.findIndex(s => s[1] === document.getElementById('searchInput').value);
+  if (idx > -1) showCard(STAFF[idx], idx);
+}
+async function doLogout() {
+  await db.auth.signOut();
+  setAdminMode(false, '');
+  const idx = STAFF.findIndex(s => s[1] === document.getElementById('searchInput').value);
+  if (idx > -1) showCard(STAFF[idx], idx);
+}
+function setAdminMode(on, email) {
+  IS_ADMIN = on;
+  document.getElementById('adminBar').classList.toggle('visible', on);
+  document.getElementById('adminEmail').textContent = email;
+  document.getElementById('adminLoginBtn').style.display = on ? 'none' : 'block';
+  document.getElementById('adminPanelTab').style.display = on ? 'flex' : 'none';
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && document.getElementById('authOverlay').style.display === 'flex') doLogin();
+  if (e.key === 'Escape') closeLogin();
+});
+
+// ── Load data from Supabase ───────────────────────────────────
+async function loadData() {
+  // Timeout after 10 seconds
+  const timeout = setTimeout(() => {
+    document.getElementById('loadingScreen').innerHTML =
+      '<div style="color:#ff8080;text-align:center;padding:32px;max-width:400px">'
+      + '<h2>Connection timeout</h2>'
+      + '<p style="margin-top:8px;color:#c8a0a0">Could not reach the database. Check your internet connection.</p>'
+      + '<button onclick="location.reload()" style="margin-top:16px;padding:10px 20px;background:#2e75b6;border:none;border-radius:8px;color:#fff;cursor:pointer">Try Again</button>'
+      + '</div>';
+  }, 10000);
+
+  try {
+    // Check existing session
+    const { data: { session } } = await db.auth.getSession();
+    if (session) setAdminMode(true, session.user.email);
+
+    // Fetch active period
+    const { data: periods } = await db.from('periods').select('*').eq('is_active', true).limit(1);
+    const period = periods[0];
+    PERIOD_ID = period.id;
+    MONTHS    = period.months;
+    // Derive current month from today (previous month = last completed)
+    const today = new Date();
+    today.setMonth(today.getMonth() - 1);
+    const monthNames = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+    const curAbbr = monthNames[today.getMonth()].toLowerCase();
+    // Find matching month in period
+    CURRENT_IDX = MONTHS.reduce((best, m, i) => {
+      const mAbbr = m.trim().substring(0,3).toLowerCase();
+      const mYear = parseInt(m.slice(-2)) + 2000;
+      const cYear = today.getFullYear();
+      if (mAbbr === curAbbr && mYear === cYear) return i;
+      return best;
+    }, 0);
+    DUE_MONTHS = CURRENT_IDX + 1;
+    const formatMonth = m => m.replace(/\'(\d{2})/, (_, y) => ' 20' + y);
+    document.getElementById('periodLabel').textContent = formatMonth(period.months[0]) + ' – ' + formatMonth(period.months[CURRENT_IDX]);
+
+    // Fetch active staff
+    const { data: staffRows } = await db.from('staff').select('*').eq('is_active', true).order('sort_order');
+
+    // Fetch all payments for this period
+    const { data: paymentRows } = await db.from('payments').select('*').eq('period_id', PERIOD_ID);
+
+    // Build payment map: staff_id -> { month_idx -> amount }
+    const payMap = {};
+    paymentRows.forEach(p => {
+      if (!payMap[p.staff_id]) payMap[p.staff_id] = {};
+      payMap[p.staff_id][p.month_idx] = p.amount;
+    });
+
+    // Build STAFF array: [no, name, dept, payments[]]
+    // Number serially by sort order
+    STAFF = staffRows.map((s, i) => {
+      const payments = MONTHS.map((_, i) => {
+        if (i < s.joined_month) return null; // pre-membership
+        return payMap[s.id] && payMap[s.id][i] !== undefined ? payMap[s.id][i] : null;
+      });
+      return [String(i + 1), s.name, s.department, payments, s.id]; // serial no, include db id
+    });
+
+    // Sort staffRows by staff_no to match Excel order
+    staffRows.sort((a, b) => {
+      const p = n => { const m = String(n).match(/^(\d+)([a-z]*)$/i); return m ? [parseInt(m[1]), m[2]||''] : [9999, String(n)]; };
+      const [na,sa] = p(a.staff_no), [nb,sb] = p(b.staff_no);
+      return na !== nb ? na - nb : sa.localeCompare(sb);
+    });
+
+    // Get inactive staff IDs
+    const activeIds = new Set(staffRows.map(s => s.id));
+    const { data: allStaffRows } = await db.from('staff').select('id').eq('is_active', false);
+    const inactiveIds = new Set((allStaffRows || []).map(s => s.id));
+
+    // INACTIVE_TOTAL: sum of payments from inactive staff (preserved across saves)
+    INACTIVE_TOTAL = paymentRows
+      .filter(p => inactiveIds.has(p.staff_id))
+      .reduce((s, p) => s + (p.amount || 0), 0);
+
+    // Monthly totals from active staff only
+    MONTHLY_TOTALS = new Array(MONTHS.length).fill(0);
+    STAFF.forEach(([,,,p]) => p.forEach((v,i) => { if (v) MONTHLY_TOTALS[i] += v; }));
+
+    // TOTAL_COLLECTED = active + inactive contributions
+    TOTAL_COLLECTED = MONTHLY_TOTALS.reduce((a,b) => a+b, 0) + INACTIVE_TOTAL;
+
+    // Fetch Glico payments
+    const { data: glico } = await db.from('glico_payments').select('*').eq('period_id', PERIOD_ID).order('paid_date');
+    GLICO_PAID = glico.map(g => ({ label: g.label, amount: g.amount }));
+
+    clearTimeout(timeout);
+    document.getElementById('loadingScreen').style.display = 'none';
+    document.getElementById('adminLoginBtn').style.display = IS_ADMIN ? 'none' : 'block';
+
+  } catch(err) {
+    console.error(err);
+    document.getElementById('loadingScreen').innerHTML =
+      '<div style="color:#ff8080;text-align:center;padding:32px;max-width:400px">'
+      + '<h2>Could not load data</h2>'
+      + '<p style="margin-top:8px;color:#c8a0a0;font-size:12px;word-break:break-all">' + (err.message || JSON.stringify(err)) + '</p>'
+      + '<button onclick="location.reload()" style="margin-top:16px;padding:10px 20px;background:#2e75b6;border:none;border-radius:8px;color:#fff;cursor:pointer">Try Again</button>'
+      + '</div>';
+  }
+}
+
+// ── Save payment to Supabase ──────────────────────────────────
+async function savePaymentToDb(staffDbId, staffName, monthIdx, amount, note) {
+  const saveBar = document.getElementById('saveBar');
+  const saveBtn = saveBar.querySelector('.save-btn');
+  saveBtn.textContent = 'Saving...';
+  saveBtn.disabled = true;
+
+  try {
+    const { data: { user } } = await db.auth.getUser();
+    const payload = {
+      staff_id:   staffDbId,
+      period_id:  PERIOD_ID,
+      month_idx:  monthIdx,
+      amount:     amount || 0,
+      note:       note || null,
+      entered_by: user ? user.email : null,
+      updated_at: new Date().toISOString()
+    };
+    const { error } = await db.from('payments').upsert(payload, { onConflict: 'staff_id,period_id,month_idx' });
+    if (error) throw error;
+
+    saveBtn.textContent = 'Saved!';
+    saveBtn.style.background = '#155724';
+    const noteEl = document.getElementById('paymentNote');
+    if (noteEl) noteEl.value = '';
+    // Recalculate totals — always add INACTIVE_TOTAL for accuracy
+    MONTHLY_TOTALS = new Array(MONTHS.length).fill(0);
+    STAFF.forEach(([,,,p]) => p.forEach((v,i) => { if (v) MONTHLY_TOTALS[i] += v; }));
+    TOTAL_COLLECTED = MONTHLY_TOTALS.reduce((a,b) => a+b, 0) + INACTIVE_TOTAL;
+    setTimeout(() => {
+      saveBtn.textContent = 'Save Payment';
+      saveBtn.style.background = '';
+      saveBtn.disabled = false;
+    }, 2000);
+  } catch(err) {
+    saveBtn.textContent = 'Failed - retry';
+    saveBtn.disabled = false;
+    console.error(err);
+  }
+}
+
+function saveChanges() {
+  if (!_lastEdit) return;
+  const note = document.getElementById('paymentNote') ? document.getElementById('paymentNote').value : '';
+  savePaymentToDb(_lastEdit.staffDbId, _lastEdit.staffName, _lastEdit.monthIdx, _lastEdit.amount, note);
+}
+
+function computeStats() {
+  // Total collected = injected from generator (includes excluded staff contributions)
+  const totalCollected = TOTAL_COLLECTED;
+  const totalGlicoPaid = GLICO_PAID.reduce((a,b)=>a+b.amount,0);
+  const balance = totalCollected - totalGlicoPaid;
+
+  // Jun 2026 = index 9 (Sep'25=0, Oct'25=1 ... Jun'26=9)
+  const CURRENT_IDX = 9;
+  const DUE_MONTHS  = CURRENT_IDX + 1; // 10 months are due
+
+  let upToDate = 0, aheadCount = 0;
+  const defaulters = [];
+  const deptMap = {};
+
+  STAFF.forEach(([num, name, dept, payments]) => {
+    const totalPaid = payments.reduce((s,v) => s+(v||0), 0);
+
+    // Find first month they joined (first non-null value)
+    const joinIdx = payments.findIndex(v => v !== null);
+    if (joinIdx === -1) return; // no data at all, skip
+
+    // Due window for this person: from joinIdx up to DUE_MONTHS-1
+    const memberDueMonths = Math.max(0, DUE_MONTHS - joinIdx);
+
+    // paid within their due window — only fully paid (>=40) counts as settled
+    const paidInWindow = payments
+      .slice(joinIdx, DUE_MONTHS)
+      .filter(v => v !== null && v >= 40).length;
+    const behind = memberDueMonths - paidInWindow;
+
+    // months paid beyond Jun'26 (advance) — only full payments
+    const paidAhead = payments
+      .slice(DUE_MONTHS)
+      .filter(v => v !== null && v >= 40).length;
+
+    if (!deptMap[dept]) deptMap[dept] = {count:0, paidMonths:0, dueMonths:0};
+    deptMap[dept].count++;
+    deptMap[dept].paidMonths += paidInWindow;
+    deptMap[dept].dueMonths  += memberDueMonths;
+
+    if (behind === 0 && paidAhead > 0) {
+      aheadCount++;
+    } else if (behind === 0) {
+      upToDate++;
+    } else {
+      defaulters.push({ num, name, dept, behind, paidAhead, totalPaid });
+    }
+  });
+
+  defaulters.sort((a,b) => b.behind - a.behind);
+
+  // Build per-dept member lists for accordion
+  const deptMembers = {};
+  STAFF.forEach(([num, name, dept, payments]) => {
+    const joinIdx = payments.findIndex(v => v !== null);
+    if (joinIdx === -1) return;
+    const memberDueMonths = Math.max(0, DUE_MONTHS - joinIdx);
+    const paidInWindow = payments.slice(joinIdx, DUE_MONTHS).filter(v => v !== null && v >= 40).length;
+    const behind = memberDueMonths - paidInWindow;
+    const paidAhead = payments.slice(DUE_MONTHS).filter(v => v !== null && v >= 40).length;
+    const hasPartial   = payments.slice(joinIdx, DUE_MONTHS).some(v => v !== null && v > 0 && v < 40);
+    const hasFullUnpaid = payments.slice(joinIdx, DUE_MONTHS).some(v => v === null || v === 0);
+    const showInclPartial = hasPartial && hasFullUnpaid;
+    let statusCls, statusLabel;
+    if (behind === 0 && paidAhead > 0)   { statusCls = 'dm-ahead';  statusLabel = `Ahead +${paidAhead}`; }
+    else if (behind === 0 && hasPartial)  { statusCls = 'dm-ok';     statusLabel = 'Up to date'; }
+    else if (behind === 0)                { statusCls = 'dm-ok';     statusLabel = 'Up to date'; }
+    else if (hasPartial)                  { statusCls = 'dm-partial';statusLabel = `${behind} month${behind>1?"s":""} behind${showInclPartial?" (incl. partial)":hasPartial&&behind===1?" (partial)":""}`; }
+    else if (behind <= 2)                 { statusCls = 'dm-warn';   statusLabel = `${behind} month${behind>1?"s":""} behind`; }
+    else                                  { statusCls = 'dm-behind'; statusLabel = `${behind} month${behind>1?"s":""} behind`; }
+    if (!deptMembers[dept]) deptMembers[dept] = [];
+    deptMembers[dept].push({ name, statusCls, statusLabel, behind });
+  });
+  // Sort members: up-to-date first, then by months behind
+  Object.values(deptMembers).forEach(arr => arr.sort((a,b) => a.behind - b.behind));
+
+  const depts = Object.entries(deptMap).map(([name, d]) => ({
+    name,
+    count: d.count,
+    pct: d.dueMonths > 0 ? Math.round(d.paidMonths / d.dueMonths * 100) : 0,
+    members: deptMembers[name] || []
+  })).sort((a,b) => a.pct - b.pct);
+
+  // Total arrears = sum of shortfalls within the due window only
+  const totalArrears = STAFF.reduce((sum, [,, , payments]) => {
+    const joinIdx = payments.findIndex(v => v !== null);
+    if (joinIdx === -1) return sum;
+    for (let i = joinIdx; i < DUE_MONTHS; i++) {
+      const val = payments[i];
+      if (val === null) sum += 40;
+      else if (val < 40) sum += (40 - val);
+    }
+    return sum;
+  }, 0);
+
+  return { totalCollected, totalGlicoPaid, balance, upToDate, aheadCount,
+           total: STAFF.length, defaulters, depts, DUE_MONTHS, totalArrears };
+}
+
+// ── render dashboard ──────────────────────────────────────────────────────────
+function renderDash() {
+  const S = computeStats();
+  const upPct = Math.round((S.upToDate + S.aheadCount) / S.total * 100);
+  const maxBar = Math.max(...MONTHLY_TOTALS);
+
+  let html = `
+  <!-- summary cards -->
+  <div class="summary-grid">
+    <div class="summary-card green">
+      <div class="s-label">Total Collected</div>
+      <div class="s-value">¢${S.totalCollected.toLocaleString()}</div>
+   <div class="s-sub">All months · ${MONTHS[0]} – ${MONTHS[MONTHS.length-1]}</div>
+    </div>
+    <div class="summary-card blue">
+      <div class="s-label">Balance on Hand</div>
+      <div class="s-value">¢${S.balance.toLocaleString()}</div>
+      <div class="s-sub">After Glico payments</div>
+    </div>
+    <div class="summary-card ${upPct>=80?'green':upPct>=50?'yellow':'red'}">
+      <div class="s-label">Fully Paid</div>
+      <div class="s-value">${S.upToDate + S.aheadCount} / ${S.total}</div>
+      <div class="s-sub">${S.aheadCount} paid ahead · ${upPct}% compliant</div>
+    </div>
+    <div class="summary-card red">
+      <div class="s-label">Total Arrears</div>
+      <div class="s-value">¢${S.totalArrears.toLocaleString()}</div>
+      <div class="s-sub">${S.defaulters.length} staff · Sep'25–Jun'26</div>
+    </div>
+  </div>
+
+  <!-- monthly collections -->
+  <div class="section-head">Monthly Collections</div>
+  <div class="bar-chart">
+    ${MONTHLY_TOTALS.map((v,i) => {
+      const pct = Math.round(v / maxBar * 100);
+      return `<div class="bar-row">
+        <div class="bar-month">${MONTHS[i].replace(' ','\u00a0')}</div>
+        <div class="bar-track">
+          <div class="bar-fill" style="width:${pct}%">
+            ${v > 0 ? `<span class="bar-val">¢${v.toLocaleString()}</span>` : ''}
+          </div>
+        </div>
+      </div>`;
+    }).join('')}
+  </div>
+
+  <!-- department breakdown -->
+  <div class="section-head">By Department <span style="font-size:10px;color:#4a6f9c;font-weight:400;text-transform:none;letter-spacing:0">— tap to expand</span></div>
+  <div class="dept-list">
+    <div class="dept-hdr">
+      <div class="dept-hdr-name">Department</div>
+      <div class="dept-hdr-staff">Staff</div>
+      <div class="dept-hdr-comp">Compliance</div>
+    </div>
+    ${S.depts.map((d, i) => {
+      const cls = d.pct >= 80 ? 'pct-high' : d.pct >= 50 ? 'pct-mid' : 'pct-low';
+      const color = d.pct >= 80 ? '#5fdb80' : d.pct >= 50 ? '#ffc107' : '#ff8080';
+      const membersHTML = d.members.map(m =>
+        `<div class="dept-member">
+          <span class="dm-name">${m.name}</span>
+          <span class="dm-status ${m.statusCls}">${m.statusLabel}</span>
+        </div>`
+      ).join('');
+      return `<div class="dept-row" onclick="toggleDept(${i})">
+          <div class="dept-row-name"><span class="dept-chevron" id="chev-${i}">▶</span>${d.name}</div>
+          <div class="dept-row-staff">${d.count}</div>
+          <div class="dept-row-comp">
+            <span class="dept-pct" style="color:${color}">${d.pct}%</span>
+            <div class="pct-bar-wrap"><div class="pct-bar ${cls}" style="width:${d.pct}%"></div></div>
+          </div>
+        </div>
+        <div class="dept-detail" id="dept-detail-${i}">${membersHTML}</div>`;
+    }).join('')}
+  </div>
+
+  <!-- staff behind -->
+  <div class="section-head">Staff Behind (${S.defaulters.length})</div>
+  ${S.defaulters.map(d => `
+    <div class="defaulter-item">
+      <div>
+        <div class="def-name">${d.name}</div>
+        <div class="def-dept">${d.dept}${d.paidAhead>0?' · <span style="color:#5fdb80;font-size:10px">+'+d.paidAhead+' ahead</span>':''}</div>
+      </div>
+      <div class="def-badge ${d.behind<=2?'warn':''}">${d.behind} month${d.behind>1?'s':''} behind</div>
+    </div>`).join('')}
+
+  <!-- reconciliation -->
+  <div class="section-head">Account Reconciliation</div>
+  <div class="recon-table">
+    <div class="recon-row">
+      <span class="recon-label">Total contributions received</span>
+      <span class="recon-val pos">¢${S.totalCollected.toLocaleString()}</span>
+    </div>
+    ${GLICO_PAID.map(p=>`
+    <div class="recon-row">
+      <span class="recon-label">${p.label}</span>
+      <span class="recon-val neg">−¢${p.amount.toLocaleString()}</span>
+    </div>`).join('')}
+    <hr class="recon-divider">
+    <div class="recon-row" style="background:#1e3d2a;border-radius:8px">
+      <span class="recon-label" style="color:#5fdb80;font-weight:700">Balance on hand</span>
+      <span class="recon-val bal">¢${S.balance.toLocaleString()}</span>
+    </div>
+  </div>`;
+
+  document.getElementById('dashContent').innerHTML = html;
+}
+
+// ── tab switching ─────────────────────────────────────────────────────────────
+function switchTab(tab) {
+  const tabEls   = document.querySelectorAll('.tab');
+  const tabNames = ['staff', 'dash', 'admin'];
+  tabEls.forEach((t, i) => t.classList.toggle('active', tabNames[i] === tab));
+  ['staff', 'dash', 'admin'].forEach(name => {
+    const panel = document.getElementById('panel-' + name);
+    if (panel) panel.classList.toggle('active', tab === name);
+  });
+  if (tab === 'dash')  renderDash();
+  if (tab === 'admin') setupAdminPanel();
+}
+
+// ── staff lookup ──────────────────────────────────────────────────────────────
+const input      = document.getElementById('searchInput');
+const suggestBox = document.getElementById('suggestions');
+const resultBox  = document.getElementById('result');
+const emptyState = document.getElementById('emptyState');
+const prompt     = document.getElementById('prompt');
+const clearBtn   = document.getElementById('clearBtn');
+let activeIdx = -1;
+
+input.addEventListener('input', () => {
+  const q = input.value.trim().toLowerCase();
+  clearBtn.classList.toggle('visible', q.length > 0);
+  resultBox.classList.remove('visible');
+  emptyState.classList.remove('visible');
+  prompt.style.display = q ? 'none' : 'block';
+  if (!q) { suggestBox.innerHTML=''; suggestBox.classList.remove('visible'); return; }
+
+  const matches = STAFF.filter(s => s[1].toLowerCase().includes(q)).slice(0, 6);
+  if (!matches.length) {
+    suggestBox.innerHTML=''; suggestBox.classList.remove('visible');
+    emptyState.classList.add('visible'); return;
+  }
+  suggestBox.innerHTML = matches.map(s =>
+    `<div class="suggestion-item" data-idx="${STAFF.indexOf(s)}" onmousedown="selectStaff(${STAFF.indexOf(s)})">
+      <span>${highlight(s[1], q)}</span>
+      <span class="suggestion-dept">${s[2]}</span>
+    </div>`).join('');
+  suggestBox.classList.add('visible');
+  activeIdx = -1;
+});
+
+input.addEventListener('keydown', e => {
+  const items = suggestBox.querySelectorAll('.suggestion-item');
+  if (e.key==='ArrowDown')  { activeIdx=Math.min(activeIdx+1,items.length-1); updateActive(items); e.preventDefault(); }
+  else if (e.key==='ArrowUp') { activeIdx=Math.max(activeIdx-1,0); updateActive(items); e.preventDefault(); }
+  else if (e.key==='Enter' && activeIdx>=0) items[activeIdx].dispatchEvent(new Event('mousedown'));
+  else if (e.key==='Escape') clearSearch();
+});
+
+function updateActive(items) {
+  items.forEach((el,i) => el.classList.toggle('active', i===activeIdx));
+}
+function highlight(name, q) {
+  return name.replace(new RegExp(`(${q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')})`, 'gi'),
+    '<b style="color:#fff">$1</b>');
+}
+function selectStaff(idx) {
+  const s = STAFF[idx];
+  input.value = s[1];
+  suggestBox.innerHTML=''; suggestBox.classList.remove('visible');
+  prompt.style.display = 'none';
+  emptyState.classList.remove('visible');
+  showCard(s, idx);
+}
+function clearSearch() {
+  input.value='';
+  suggestBox.innerHTML=''; suggestBox.classList.remove('visible');
+  resultBox.classList.remove('visible');
+  emptyState.classList.remove('visible');
+  prompt.style.display='block';
+  clearBtn.classList.remove('visible');
+  input.focus();
+}
+function toggleDept(i) {
+  const detail  = document.getElementById(`dept-detail-${i}`);
+  const chevron = document.getElementById(`chev-${i}`);
+  const isOpen  = detail.classList.contains('open');
+  // Close all other open departments first
+  document.querySelectorAll('.dept-detail.open').forEach(el => {
+    if (el.id !== `dept-detail-${i}`) {
+      el.classList.remove('open');
+      const idx = el.id.replace('dept-detail-', '');
+      const chev = document.getElementById(`chev-${idx}`);
+      if (chev) chev.classList.remove('open');
+    }
+  });
+  detail.classList.toggle('open', !isOpen);
+  chevron.classList.toggle('open', !isOpen);
+}
+
+function buildStatusBar(payments, joinIdx) {
+  const paidInWindow = payments.slice(joinIdx, DUE_MONTHS).filter(v => v !== null && v >= 40).length;
+  const behind       = Math.max(0, DUE_MONTHS - joinIdx) - paidInWindow;
+  const paidAhead    = payments.slice(DUE_MONTHS).filter(v => v !== null && v > 0).length;
+  const aheadTotal   = payments.slice(DUE_MONTHS).reduce((s,v) => s+(v||0), 0);
+  // behindTotal = sum of shortfalls per month (handles partials correctly)
+  const behindTotal  = payments.slice(joinIdx, DUE_MONTHS)
+    .reduce((s, v) => v === null || v < 40 ? s + (40 - (v || 0)) : s, 0);
+
+  const currentMonth = MONTHS[CURRENT_IDX].replace(/\'(\d{2})$/, (_, y) => ' 20' + y);
+  if (behind === 0 && paidAhead > 0) {
+    return '<div class="status-bar ahead"><strong>' + paidAhead + ' month' + (paidAhead>1?'s':'') + ' paid in advance after ' + currentMonth + ': GH&#x20B5;' + aheadTotal.toLocaleString() + '</strong></div>';
+  } else if (behind === 0) {
+    return '<div class="status-bar ok"><strong>Paid up to date: ' + currentMonth + '</strong></div>';
+  } else {
+    return '<div class="status-bar owe">'
+      + 'You owe <strong>' + behind + ' month' + (behind>1?'s':'') + '</strong> up to ' + currentMonth + ': '
+      + '<strong>GH&#x20B5;' + behindTotal.toLocaleString() + '</strong></div>';
+  }
+}
+
+function showCard([num, name, dept, payments], staffIdx) {
+  const joinIdx = payments.findIndex(v => v !== null);
+  const joinNote = joinIdx > 0 ? ` · Joined ${MONTHS[joinIdx]}` : '';
+  const monthsHTML = payments.map((val, i) => {
+    let cls, badge;
+    if (i < joinIdx)       { cls = 'pre-member'; badge = 'n/a'; }
+    else if (val === null) { cls = IS_ADMIN ? 'unpaid editable' : 'unpaid'; badge = '—'; }
+    else if (val === 0)    { cls = IS_ADMIN ? 'arrears editable' : 'arrears'; badge = '0'; }
+    else if (val < 40)     { cls = IS_ADMIN ? 'partial editable' : 'partial'; badge = `¢${val} / 40`; }
+    else                   { cls = 'paid'; badge = `¢${val}`; }
+    return `<div class="month-row ${cls}" data-month="${i}" data-staff="${staffIdx}">
+      <span class="month-name">${MONTHS[i]}</span>
+      <span class="month-badge">${badge}</span>
+    </div>`;
+  }).join('');
+  const total = payments.reduce((s,v) => s+(v||0), 0);
+  resultBox.innerHTML = `
+    <div class="card">
+      <div class="card-header">
+        <div class="card-number">Staff No. ${num}</div>
+        <div class="card-name">${name}</div>
+        <span class="card-dept">${dept}${joinNote}</span>
+      </div>
+      <div class="months-grid">${monthsHTML}</div>
+      ${IS_ADMIN ? '<div class="edit-hint">Tap an unpaid or partial month to enter a payment</div>' : ''}
+      <div class="total-bar">
+        <span class="total-label">Total Paid</span>
+        <span class="total-amount" id="cardTotal">¢${total.toLocaleString()}</span>
+      </div>
+${buildStatusBar(payments, joinIdx)}
+      <div class="save-bar" id="saveBar">
+        <input type="text" class="note-input" id="paymentNote" placeholder="Add a note e.g. cash received 15/07/26 (optional)">
+        <button class="save-btn" onclick="saveChanges()">Save Payment</button>
+        <div class="save-note">Saves directly to the database</div>
+      </div>
+      </div>
+    </div>`;
+  document.querySelectorAll('.month-row.editable').forEach(row => {
+    row.addEventListener('click', () => startEdit(row));
+  });
+  resultBox.classList.add('visible');
+  resultBox.scrollIntoView({ behavior:'smooth', block:'nearest' });
+}
+
+function startEdit(row) {
+  const monthIdx  = parseInt(row.dataset.month);
+  const staffIdx  = parseInt(row.dataset.staff);
+  const badgeSpan = row.querySelector('.month-badge');
+  const curVal    = STAFF[staffIdx][3][monthIdx] || 0;
+  const input = document.createElement('input');
+  input.type = 'number'; input.min = 0; input.max = 40;
+  input.className = 'month-input';
+  input.value = curVal > 0 ? curVal : '';
+  input.placeholder = '0–40';
+  badgeSpan.replaceWith(input);
+  input.focus(); input.select();
+  function commit() {
+    const newVal = parseInt(input.value);
+    const v = isNaN(newVal) ? null : (newVal === 0 ? null : newVal);
+    STAFF[staffIdx][3][monthIdx] = v;
+    if (!pendingEdits[staffIdx]) pendingEdits[staffIdx] = {};
+    pendingEdits[staffIdx][monthIdx] = v;
+    _lastEdit = { staffDbId: STAFF[staffIdx][4], staffName: STAFF[staffIdx][1], monthIdx, amount: v };
+    showCard(STAFF[staffIdx], staffIdx);
+    document.getElementById('saveBar').classList.add('visible');
+  }
+  input.addEventListener('blur', commit);
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter') input.blur();
+    if (e.key === 'Escape') input.replaceWith(badgeSpan);
+  });
+}
+
+// Track last edit for Supabase save
+function saveChanges() {
+  if (!_lastEdit) return;
+  const note = document.getElementById('paymentNote') ? document.getElementById('paymentNote').value : '';
+  savePaymentToDb(_lastEdit.staffDbId, _lastEdit.staffName, _lastEdit.monthIdx, _lastEdit.amount, note);
+}
+
+
+// ── Export to Excel (ExcelJS - full formatting support) ──────
+async function exportExcel() {
+  const exportBtn = document.querySelector('#adminBar button[onclick="exportExcel()"]');
+  if (exportBtn) { exportBtn.textContent = 'Generating...'; exportBtn.disabled = true; }
+
+  try {
+    const { data: allStaff }    = await db.from('staff').select('*').order('sort_order');
+    const { data: allPayments } = await db.from('payments').select('*').eq('period_id', PERIOD_ID);
+    const { data: period }      = await db.from('periods').select('*').eq('id', PERIOD_ID).single();
+    const { data: glico }       = await db.from('glico_payments').select('*').eq('period_id', PERIOD_ID).order('paid_date');
+
+    // Sort staff by staff_no
+    function parseNo(n) {
+      const m = String(n).match(/^(\d+)([a-z]*)$/i);
+      return m ? [parseInt(m[1]), m[2]||''] : [9999, String(n)];
+    }
+    allStaff.sort((a,b) => {
+      const [na,sa] = parseNo(a.staff_no), [nb,sb] = parseNo(b.staff_no);
+      return na !== nb ? na - nb : sa.localeCompare(sb);
+    });
+    // Number serially by sort order (matches original Excel)
+    allStaff.forEach((s, i) => { s._displayNo = String(i + 1); });
+
+    // Build payment map
+    const payMap  = {};
+    const noteMap = {};
+    allPayments.forEach(p => {
+      if (!payMap[p.staff_id])  payMap[p.staff_id]  = {};
+      if (!noteMap[p.staff_id]) noteMap[p.staff_id] = {};
+      payMap[p.staff_id][p.month_idx] = p.amount;
+      if (p.note) noteMap[p.staff_id][p.month_idx] = p.note;
+    });
+
+    const months    = period.months;
+    const numMonths = months.length;
+    // Build month headers with year e.g. "JAN '26" from the MONTHS array e.g. "Jan '26"
+    const monthAbbrs = months.slice(0, numMonths).map(m => m.toUpperCase());
+    const lastCol   = 3 + numMonths + 1; // 1-based
+
+    // ── Colors (exact match from original Excel - theme 9=accent6=#70AD47, theme 5=accent2=#ED7D31) ──
+    const HDR_BG   = 'FF70AD47'; // accent6 green - header
+    const ODD_BG   = 'FFC5DEB5'; // accent6 tint 0.6 - odd rows
+    const EVEN_BG  = 'FFE2EEDA'; // accent6 tint 0.8 - even rows
+    const TOT_BG   = 'FFF7CBAC'; // accent2 tint 0.6 - total row orange
+    const WHITE    = 'FFFFFFFF';
+    const BLACK    = 'FF000000';
+
+    const thinBorder = {
+      top:    {style:'thin', color:{argb:WHITE}},
+      bottom: {style:'thin', color:{argb:WHITE}},
+      left:   {style:'thin', color:{argb:WHITE}},
+      right:  {style:'thin', color:{argb:WHITE}}
+    };
+    const thickBorder = thinBorder; // original has thin borders everywhere
+
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet('Glico');
+
+    // Column widths
+    ws.getColumn(1).width = 6;
+    ws.getColumn(2).width = 32;
+    ws.getColumn(3).width = 18;
+    for (let m = 0; m < numMonths; m++) ws.getColumn(4+m).width = 10;
+    ws.getColumn(lastCol).width = 12;
+
+    // ── Rows 1-3: Titles ────────────────────────────────────────
+    const titles = [
+      'CAPE COAST TECHNICAL INSTITUTE WELFARE ASSOCIATION',
+      'GLICO INSURANCE (' + months[0].replace(/\'(\d{2})/, (_, y) => ' 20' + y).toUpperCase() + ' - ' + months[CURRENT_IDX].replace(/\'(\d{2})/, (_, y) => ' 20' + y).toUpperCase() + ')',
+      'TEACHING & NON-TEACHING STAFF'
+    ];
+    titles.forEach((title, i) => {
+      const row = ws.addRow([title]);
+      ws.mergeCells(i+1, 1, i+1, lastCol);
+      row.height = 22;
+      row.getCell(1).font      = {bold:true, size:14, name:'Calibri', color:{argb:BLACK}};
+      row.getCell(1).alignment = {horizontal:'center', vertical:'middle'};
+    });
+
+    // Row 4: blank
+    ws.addRow([]).height = 8;
+
+    // ── Row 5: Header ───────────────────────────────────────────
+    const hdrRow = ws.addRow(['NO.', 'NAME OF STAFF', 'DEPARTMENT', ...monthAbbrs, 'TOTAL']);
+    hdrRow.height = 30;
+    hdrRow.eachCell((cell, colNum) => {
+      const isTotalCol = colNum === lastCol;
+      cell.font      = {bold:true, size:11, name:'Calibri', color:{argb:WHITE}};
+      cell.fill      = {type:'pattern', pattern:'solid', fgColor:{argb: isTotalCol ? TOT_BG : HDR_BG}};
+      cell.alignment = {horizontal:'center', vertical:'middle', wrapText:true};
+      cell.border    = thinBorder;
+    });
+
+    // ── Row 6: Cedis ────────────────────────────────────────────
+    const cedisData = [null, null, null, ...Array(numMonths+1).fill('¢')];
+    const cedisRow  = ws.addRow(cedisData);
+    cedisRow.height = 16;
+    for (let c = 4; c <= lastCol; c++) {
+      const cell = cedisRow.getCell(c);
+      cell.font      = {size:11, name:'Calibri', color:{argb:WHITE}};
+      cell.fill      = {type:'pattern', pattern:'solid', fgColor:{argb: c === lastCol ? TOT_BG : HDR_BG}};
+      cell.alignment = {horizontal:'center'};
+      cell.border    = thinBorder;
+    }
+
+    // ── Staff rows ───────────────────────────────────────────────
+    const monthlyTotals = new Array(numMonths).fill(0);
+    let grandTotal = 0;
+
+    allStaff.forEach((s, si) => {
+      const bg = si % 2 === 0 ? ODD_BG : EVEN_BG;
+      let staffTotal = 0;
+      const rowData = [s._displayNo || s.staff_no, s.name, s.department];
+      for (let m = 0; m < numMonths; m++) {
+        const val = m < s.joined_month ? null
+          : (payMap[s.id] && payMap[s.id][m] !== undefined ? payMap[s.id][m] : null);
+        rowData.push(val);
+        if (val) { staffTotal += val; monthlyTotals[m] += val; }
+      }
+      rowData.push(staffTotal);
+      grandTotal += staffTotal;
+
+      const row = ws.addRow(rowData);
+      row.height = 18;
+      row.eachCell({includeEmpty:true}, (cell, colNum) => {
+        const isTotal = colNum === lastCol;
+        cell.fill   = {type:'pattern', pattern:'solid', fgColor:{argb: isTotal ? TOT_BG : bg}};
+        cell.font   = {size:11, name:'Calibri', bold: isTotal};
+        cell.border = thinBorder;
+        cell.alignment = {
+          horizontal: colNum === 2 ? 'left' : 'center',
+          vertical: 'middle'
+        };
+      });
+      // Add cell notes for any payments that have notes
+      if (noteMap[s.id]) {
+        Object.entries(noteMap[s.id]).forEach(([mIdx, note]) => {
+          const colNum = 4 + parseInt(mIdx); // col 4 = first month
+          const cell = row.getCell(colNum);
+          cell.note = { texts: [{ text: note }], protection: { locked: false } };
+        });
+      }
+    });
+
+    // ── Blank row ────────────────────────────────────────────────
+    ws.addRow([]);
+
+    // ── Totals row ───────────────────────────────────────────────
+    const totRowNum = ws.rowCount + 1;
+    const totData   = ['TOTAL PREMIUMS RECEIVED', null, null, ...monthlyTotals, grandTotal];
+    const totRow    = ws.addRow(totData);
+    ws.mergeCells(totRowNum, 1, totRowNum, 3);
+    totRow.height = 20;
+    totRow.eachCell({includeEmpty:true}, (cell, colNum) => {
+      if (colNum < 4 && colNum > 1) return;
+      cell.fill      = {type:'pattern', pattern:'solid', fgColor:{argb:TOT_BG}};
+      cell.font      = {bold:true, size:11, name:'Calibri', color:{argb:BLACK}};
+      cell.alignment = {horizontal:'center', vertical:'middle'};
+      cell.border    = thickBorder;
+    });
+
+    // ── Reconciliation ───────────────────────────────────────────
+    ws.addRow([]); ws.addRow([]);
+    const totalCollected = allPayments.reduce((s,p) => s+(p.amount||0), 0);
+    const totalGlico     = (glico||[]).reduce((s,p) => s+p.amount, 0);
+    const balance        = totalCollected - totalGlico;
+    const recolCol       = lastCol - 4;
+
+    let rr = ws.rowCount + 1;
+    ws.mergeCells(rr, recolCol, rr, lastCol-1);
+    ws.getRow(rr).getCell(recolCol).value = 'ACCOUNT RECONCILIATION';
+    ws.getRow(rr).getCell(recolCol).font  = {bold:true, size:12, name:'Calibri'};
+    ws.getRow(rr).getCell(recolCol).alignment = {horizontal:'center'};
+    rr++;
+    ws.getRow(rr).getCell(lastCol).value = '¢'; rr++;
+    ws.getRow(rr).getCell(recolCol).value = 'Contributions made';
+    ws.getRow(rr).getCell(lastCol).value  = totalCollected; rr++;
+    (glico||[]).forEach(g => {
+      ws.getRow(rr).getCell(recolCol).value = g.label;
+      ws.getRow(rr).getCell(lastCol).value  = -g.amount; rr++;
+    });
+    ws.getRow(rr).getCell(recolCol).value = 'Balance';
+    ws.getRow(rr).getCell(recolCol).font  = {bold:true};
+    ws.getRow(rr).getCell(lastCol).value  = balance;
+    ws.getRow(rr).getCell(lastCol).font   = {bold:true};
+
+    // ── Print settings ───────────────────────────────────────────
+    ws.pageSetup.orientation  = 'landscape';
+    ws.pageSetup.paperSize    = 8; // A3
+    ws.pageSetup.fitToPage    = true;
+    ws.pageSetup.fitToWidth   = 1;
+
+    // ── Download ─────────────────────────────────────────────────
+    const buf   = await wb.xlsx.writeBuffer();
+    const blob  = new Blob([buf], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+    const today = new Date().toISOString().slice(0,10);
+    const a     = document.createElement('a');
+    a.href      = URL.createObjectURL(blob);
+    a.download  = `CCTI_Welfare_${today}.xlsx`;
+    a.click();
+
+  } catch(err) {
+    alert('Export failed: ' + err.message);
+    console.error(err);
+  } finally {
+    if (exportBtn) { exportBtn.textContent = '\u2B07 Excel'; exportBtn.disabled = false; }
+  }
+}
+
+
+// ── Admin Panel ───────────────────────────────────────────────
+async function setupAdminPanel() {
+  const joinedSel = document.getElementById('newStaffJoined');
+  if (joinedSel) joinedSel.innerHTML = MONTHS.map((m,i) => '<option value="'+i+'">'+m+'</option>').join('');
+
+  const deactSel = document.getElementById('deactivateStaff');
+  if (deactSel) deactSel.innerHTML = STAFF.map(s =>
+    '<option value="'+s[4]+'">'+s[1]+' ('+s[2]+')</option>'
+  ).join('');
+
+  const countEl = document.getElementById('currentMonthCount');
+  if (countEl) countEl.textContent = MONTHS.length + ' months (' + MONTHS[0] + ' to ' + MONTHS[MONTHS.length-1] + ')';
+
+  // Set default date to today
+  const dateEl = document.getElementById('glicoDate');
+  if (dateEl) dateEl.value = new Date().toISOString().slice(0,10);
+
+  // Load existing Glico payments
+  const { data: glicoList } = await db.from('glico_payments').select('*').eq('period_id', PERIOD_ID).order('paid_date');
+  const listEl = document.getElementById('glicoList');
+  if (listEl) {
+    listEl.innerHTML = glicoList && glicoList.length > 0
+      ? '<div style="color:#7eb3e8;font-size:11px;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Existing Payments</div>'
+        + glicoList.map(p => '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #1e3d6b;font-size:12px;color:#c8dcf5"><span>'+p.label+'</span><span style="color:#5fdb80;font-weight:700">GH&#x20B5;'+p.amount.toLocaleString()+'</span></div>').join('')
+      : '';
+  }
+}
+
+async function addGlicoPayment() {
+  const label  = document.getElementById('glicoLabel').value.trim();
+  const amount = parseInt(document.getElementById('glicoAmount').value);
+  const date   = document.getElementById('glicoDate').value;
+  const msg    = document.getElementById('glicoMsg');
+  if (!label)             { showAdminMsg(msg, 'Please enter a description.', '#ff8080'); return; }
+  if (!amount || amount <= 0) { showAdminMsg(msg, 'Please enter a valid amount.', '#ff8080'); return; }
+  if (!date)              { showAdminMsg(msg, 'Please select a date.', '#ff8080'); return; }
+  showAdminMsg(msg, 'Saving...', '#a0bedd');
+  const { error } = await db.from('glico_payments').insert({ period_id: PERIOD_ID, label, amount, paid_date: date });
+  if (error) { showAdminMsg(msg, 'Error: ' + error.message, '#ff8080'); return; }
+  GLICO_PAID.push({ label, amount });
+  showAdminMsg(msg, 'Payment recorded!', '#5fdb80');
+  document.getElementById('glicoLabel').value  = '';
+  document.getElementById('glicoAmount').value = '';
+  setupAdminPanel();
+}
+
+async function addStaff() {
+  const name   = document.getElementById('newStaffName').value.trim();
+  const dept   = document.getElementById('newStaffDept').value.trim();
+  const joined = parseInt(document.getElementById('newStaffJoined').value);
+  const msg    = document.getElementById('addStaffMsg');
+  if (!name || !dept) { showAdminMsg(msg, 'Please fill in name and department.', '#ff8080'); return; }
+  showAdminMsg(msg, 'Adding...', '#a0bedd');
+  // Place new staff at end of their department
+  const { data: deptStaff } = await db.from('staff')
+    .select('sort_order').eq('department', dept).order('sort_order', {ascending:false}).limit(1);
+  const newOrder = deptStaff && deptStaff.length > 0 ? deptStaff[0].sort_order + 1 : 999;
+  // Shift everyone with sort_order >= newOrder up by 1
+  const { data: toShift } = await db.from('staff').select('id,sort_order').gte('sort_order', newOrder);
+  for (const s of (toShift || [])) {
+    await db.from('staff').update({ sort_order: s.sort_order + 1 }).eq('id', s.id);
+  }
+  const { error } = await db.from('staff').insert({
+    staff_no: String(newOrder), name, department: dept,
+    joined_month: joined, is_active: true, sort_order: newOrder
+  });
+  if (error) { showAdminMsg(msg, 'Error: ' + error.message, '#ff8080'); return; }
+  showAdminMsg(msg, name + ' added! Refresh to see them.', '#5fdb80');
+  document.getElementById('newStaffName').value = '';
+  document.getElementById('newStaffDept').value = '';
+}
+
+async function addMonth() {
+  const monthName = document.getElementById('newMonthName').value;
+  const year      = document.getElementById('newMonthYear').value.trim();
+  const msg       = document.getElementById('addMonthMsg');
+  if (!year || year.length !== 2 || isNaN(year)) { showAdminMsg(msg, 'Enter 2-digit year e.g. 27', '#ff8080'); return; }
+  const label = monthName + " '" + year;
+  if (MONTHS.includes(label)) { showAdminMsg(msg, label + ' already exists.', '#ff8080'); return; }
+  showAdminMsg(msg, 'Adding...', '#a0bedd');
+  const { error } = await db.from('periods').update({ months: [...MONTHS, label] }).eq('id', PERIOD_ID);
+  if (error) { showAdminMsg(msg, 'Error: ' + error.message, '#ff8080'); return; }
+  MONTHS.push(label);
+  MONTHLY_TOTALS.push(0);
+  showAdminMsg(msg, label + ' added! Refresh to activate it.', '#5fdb80');
+  const countEl = document.getElementById('currentMonthCount');
+  if (countEl) countEl.textContent = MONTHS.length + ' months (' + MONTHS[0] + ' to ' + MONTHS[MONTHS.length-1] + ')';
+
+  // Set default date to today
+  const dateEl = document.getElementById('glicoDate');
+  if (dateEl) dateEl.value = new Date().toISOString().slice(0,10);
+
+  // Load existing Glico payments
+  const { data: glicoList } = await db.from('glico_payments').select('*').eq('period_id', PERIOD_ID).order('paid_date');
+  const listEl = document.getElementById('glicoList');
+  if (listEl) {
+    listEl.innerHTML = glicoList && glicoList.length > 0
+      ? '<div style="color:#7eb3e8;font-size:11px;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Existing Payments</div>'
+        + glicoList.map(p => '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #1e3d6b;font-size:12px;color:#c8dcf5"><span>'+p.label+'</span><span style="color:#5fdb80;font-weight:700">GH&#x20B5;'+p.amount.toLocaleString()+'</span></div>').join('')
+      : '';
+  }
+}
+
+async function addGlicoPayment() {
+  const label  = document.getElementById('glicoLabel').value.trim();
+  const amount = parseInt(document.getElementById('glicoAmount').value);
+  const date   = document.getElementById('glicoDate').value;
+  const msg    = document.getElementById('glicoMsg');
+  if (!label)             { showAdminMsg(msg, 'Please enter a description.', '#ff8080'); return; }
+  if (!amount || amount <= 0) { showAdminMsg(msg, 'Please enter a valid amount.', '#ff8080'); return; }
+  if (!date)              { showAdminMsg(msg, 'Please select a date.', '#ff8080'); return; }
+  showAdminMsg(msg, 'Saving...', '#a0bedd');
+  const { error } = await db.from('glico_payments').insert({ period_id: PERIOD_ID, label, amount, paid_date: date });
+  if (error) { showAdminMsg(msg, 'Error: ' + error.message, '#ff8080'); return; }
+  GLICO_PAID.push({ label, amount });
+  showAdminMsg(msg, 'Payment recorded!', '#5fdb80');
+  document.getElementById('glicoLabel').value  = '';
+  document.getElementById('glicoAmount').value = '';
+  setupAdminPanel();
+}
+
+async function deactivateStaff() {
+  const sel  = document.getElementById('deactivateStaff');
+  const id   = parseInt(sel.value);
+  const name = sel.options[sel.selectedIndex].text;
+  if (!confirm('Deactivate ' + name + '? Their payments stay in the totals.')) return;
+  showAdminMsg(msg, 'Updating...', '#a0bedd');
+  const { error } = await db.from('staff').update({ is_active: false }).eq('id', id);
+  if (error) { showAdminMsg(msg, 'Error: ' + error.message, '#ff8080'); return; }
+  showAdminMsg(msg, name + ' deactivated. Refresh to update.', '#5fdb80');
+  sel.remove(sel.selectedIndex);
+}
+
+function showAdminMsg(el, text, color) {
+  el.textContent = text; el.style.color = color; el.style.display = 'block';
+}
+
+// Start
+loadData();
+</script>
+</body>
+</html>
